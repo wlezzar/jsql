@@ -1,3 +1,4 @@
+import com.palantir.gradle.gitversion.VersionDetails
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 /*
@@ -10,15 +11,39 @@ plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.3.72"
     id("com.github.johnrengelman.shadow") version "6.0.0"
+    id("com.google.cloud.tools.jib") version "2.4.0"
+    id("com.palantir.git-version") version "0.12.3"
 
     // Apply the application plugin to add support for building a CLI application.
     application
 }
 
+val versionDetails: groovy.lang.Closure<VersionDetails> by extra
+
+version = versionDetails().lastTag.replace("^v".toRegex(), "")
+
 application {
     // Define the main class for the application.
     mainClassName = "io.github.wlezzar.jsql.MainKt"
 }
+
+jib {
+
+    from {
+        image = "openjdk:11-jre-slim"
+    }
+
+    to {
+        image = "wlezzar/jsql"
+        tags = setOf(project.version.toString(), "latest")
+    }
+
+    container {
+        jvmFlags = listOf("-client")
+        mainClass = application.mainClassName
+    }
+}
+
 
 repositories {
     // Use jcenter for resolving dependencies.
@@ -41,7 +66,6 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:1.7.26")
     implementation("com.github.ben-manes.caffeine:caffeine:2.8.0")
     implementation("com.google.protobuf:protobuf-java:3.12.2")
-
 
 
     // Use the Kotlin test library.
