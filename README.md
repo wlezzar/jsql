@@ -54,7 +54,7 @@ Requires a JDK 11 or higher.
 JSQL_VERSION=$(curl -s https://api.github.com/repos/wlezzar/jsql/releases/latest | jq -r .tag_name)
 
 # Download the tar (or zip) package and unarchive it somewhere in your host (ex. /opt)
-wget -O /tmp/jsql.zip https://github.com/wlezzar/jsql/releases/download/0.2.0/jsql.zip
+wget -O /tmp/jsql.zip https://github.com/wlezzar/jsql/releases/download/${JSQL_VERSION}/jsql.zip
 unzip /tmp/jsql.zip -d /opt
 
 # Add jsql in your path (add the following line to your ~/.bashrc or ~/.zshrc to make it permanent)
