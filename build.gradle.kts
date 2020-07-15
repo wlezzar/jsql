@@ -83,6 +83,9 @@ java {
 }
 
 tasks {
+    named<Zip>("distZip") { archiveFileName.set("${project.name}.zip") }
+    named<Tar>("distTar") { archiveFileName.set("${project.name}.tar") }
+
     withType<KotlinCompile> {
         kotlinOptions { jvmTarget = "11" }
     }

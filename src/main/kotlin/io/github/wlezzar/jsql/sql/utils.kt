@@ -19,7 +19,7 @@ object Functions {
         java.sql.Timestamp.from(SimpleDateFormat(format).parse(date).toInstant())
 }
 
-fun <T> connection(table: Table, name: String = "DATA", block: CalciteConnection.() -> T): T {
+fun <T> connection(table: Table, name: String = "data", block: CalciteConnection.() -> T): T {
     val info = Properties().apply {
         setProperty(CalciteConnectionProperty.FUN.camelName(), "mysql,postgresql")
         setProperty(CalciteConnectionProperty.CASE_SENSITIVE.camelName(), "false")
@@ -39,8 +39,8 @@ fun <T> connection(table: Table, name: String = "DATA", block: CalciteConnection
 
 }
 
-fun sql(table: Table, block: Statement.() -> ResultSet): List<ObjectNode> =
-    connection(table) {
+fun sql(table: Table, alias: String = "data", block: Statement.() -> ResultSet): List<ObjectNode> =
+    connection(table, alias) {
         createStatement().use {
             it.block().use { results -> results.toJson().toList() }
         }
