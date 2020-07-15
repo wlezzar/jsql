@@ -12,6 +12,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
+import com.github.ajalt.mordant.TermColors
 import io.github.wlezzar.jsql.sql.JsonFilterableTable
 import io.github.wlezzar.jsql.sql.JsonTable
 import io.github.wlezzar.jsql.sql.StdinSource
@@ -21,6 +22,7 @@ import io.github.wlezzar.jsql.sql.json
 import io.github.wlezzar.jsql.sql.sql
 import io.github.wlezzar.jsql.sql.toPrettyPrintedString
 import java.io.File
+import kotlin.system.exitProcess
 
 data class JSqlContext(val output: Format, val streaming: Boolean, val limit: Int?)
 
@@ -82,10 +84,38 @@ class Query : CliktCommand(name = "query", help = "Run a sql query over the json
     }
 }
 
-fun jsql() = JSqlCommandLine()
-    .subcommands(
-        DescribeSchema(),
-        Query()
-    )
+fun jsql() = JSqlCommandLine().subcommands(
+    DescribeSchema(),
+    Query()
+)
 
-fun main(args: Array<String>) = jsql().main(args)
+private fun printErr(err: Throwable) {
+    System.err.println(formatError(err))
+    if (System.getenv("JSQL_STACKTRACE") == "1") {
+        err.printStackTrace(System.err)
+    }
+}
+
+private fun formatError(err: Throwable, level: Int = 0): String = with(TermColors()) {
+    val error = buildString {
+        append("""${red("error:")} ${err.message}""")
+        val cause = err.cause
+        if (cause != null) {
+            appendln()
+            appendln(red("cause:"))
+            append(formatError(cause, level = level + 1))
+        }
+    }
+
+    error.prependIndent(indent = " ".repeat(2 * level))
+}
+
+fun main(args: Array<String>) {
+    val exitCode =
+        jsql()
+            .runCatching { main(args) }
+            .onFailure(::printErr)
+            .fold(onSuccess = { 0 }, onFailure = { 1 })
+
+    exitProcess(exitCode)
+}
