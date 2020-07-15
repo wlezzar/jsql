@@ -164,17 +164,18 @@ zoe --silent -o json groups offsets my_group \
 
 ## FAQ
 
-## When using nested fields, I have "Table 'xxx' not found"!
+### When accessing nested fields, I have "Table 'xxx' not found"!
 
-Apache Calcite parser is a bit peaky. When access nested data using the `.` operator, you need to give the full path including the table name. So:
+Apache Calcite parser is a bit peaky. When accessing nested data using the `.` operator, you need to give the full path to your field including the table name. So:
 - Instead of: `SELECT author.login FROM data`
-- Do: `SELECT data.author.login FROM data`
+- Use: `SELECT data.author.login FROM data`
 
-## My query seems valid, but I get an error "Encountered "xxx" ... Was expecting one of ..."!
+### My query seems valid, but I get an error "Encountered "xxx" ... Was expecting one of ..."!
 
 This is an Apache Calcite parse error. First check you didn't do any syntax error on your query.
 
-One common issue that causes this problem is when you have a field that has the same name as a SQL keyword. In this, you need to quote your field name with `"`. So:
+One common issue that causes this problem is when you have a field that has the same name as a SQL keyword. In this case, you need to quote your field name with `"`. So:
+
 - Instead of: `SELECT data.commit.author FROM data`
 - Use: `SELECT data."commit".author FROM data`
 
