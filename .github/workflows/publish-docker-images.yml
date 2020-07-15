@@ -1,0 +1,31 @@
+name: Publish docker images
+
+on:
+  release:
+    types: ["published"]
+
+jobs:
+
+  publish-docker:
+    name: Publish docker images
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '100'
+
+      - run: git fetch --all --depth=100 --tags
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v1.3.0
+        with:
+          java-version: 11
+          java-package: jdk
+          architecture: x64
+
+      - name: publish zoe images
+        run: |
+          ./gradlew test jib \
+            -Djib.to.auth.username=${{ secrets.DOCKER_REGISTRY_USERNAME }} \
+            -Djib.to.auth.password="${{ secrets.DOCKER_REGISTRY_ACCESS_TOKEN }}"

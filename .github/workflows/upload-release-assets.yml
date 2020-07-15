@@ -32,7 +32,7 @@ jobs:
       - name: Package
         id: package
         run: |
-          ./gradlew clean distZip distTar
+          ./gradlew clean test distZip distTar
 
       - name: Upload zip package
         uses: actions/upload-release-asset@v1
@@ -53,3 +53,4 @@ jobs:
           asset_path: build/distributions/jsql.tar
           asset_name: jsql.tar
           asset_content_type: application/zip
+

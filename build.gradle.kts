@@ -1,4 +1,6 @@
 import com.palantir.gradle.gitversion.VersionDetails
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 /*
@@ -68,12 +70,13 @@ dependencies {
     implementation("com.google.protobuf:protobuf-java:3.12.2")
 
 
-    // Use the Kotlin test library.
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-
-    // Use the Kotlin JUnit integration.
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    testImplementation("io.kotest:kotest-runner-junit5-jvm:4.1.1")
+    testImplementation("io.kotest:kotest-assertions-core-jvm:4.1.1")
+    testImplementation("io.kotest:kotest-property-jvm:4.1.1")
+    testImplementation("io.kotest:kotest-runner-console-jvm:4.1.1")
 }
+
+
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -82,5 +85,17 @@ java {
 tasks {
     withType<KotlinCompile> {
         kotlinOptions { jvmTarget = "11" }
+    }
+
+    withType<Test> {
+        useJUnitPlatform()
+        val verbose = project.findProperty("tests.verbose")?.toString()?.toBoolean() ?: false
+        testLogging {
+            events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED)
+            showExceptions = verbose
+            exceptionFormat = TestExceptionFormat.FULL
+            showStandardStreams = verbose
+        }
+
     }
 }

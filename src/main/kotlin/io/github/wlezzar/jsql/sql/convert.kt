@@ -45,12 +45,12 @@ fun resultSetItemToJsonNode(item: Any?): JsonNode = when (item) {
     else -> TextNode(item.toString())
 }
 
-fun ResultSet.toJson(lowerKeys: Boolean): Sequence<ObjectNode> = sequence {
+fun ResultSet.toJson(): Sequence<ObjectNode> = sequence {
     while (next()) {
         val row = json.createObjectNode().apply {
             for (i in 1..metaData.columnCount) {
                 set<JsonNode>(
-                    metaData.getColumnLabel(i).let { if (lowerKeys) it.toLowerCase() else it },
+                    metaData.getColumnLabel(i),
                     resultSetItemToJsonNode(getObject(i))
                 )
             }
