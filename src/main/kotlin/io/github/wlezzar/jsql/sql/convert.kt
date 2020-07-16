@@ -65,12 +65,11 @@ fun JsonNode.getFieldCaseInsensitive(name: String) =
 /**
  * Converts a json field into a sql field.
  */
-fun convertJsonElement(row: JsonNode, type: RelDataType, failOnError: Boolean): Any? = when (type) {
+private fun convertJsonElement(row: JsonNode, type: RelDataType, failOnError: Boolean): Any? = when (type) {
     is RelRecordType -> type.fieldList
         .asSequence()
         .map { field ->
-            if (field.name.toUpperCase() == "_ROW_UUID") "${UUID.randomUUID()}"
-            else row.getFieldCaseInsensitive(field.name)?.let { convertJsonElement(it, field.type, failOnError) }
+            row.getFieldCaseInsensitive(field.name)?.let { convertJsonElement(it, field.type, failOnError) }
         }
         .toList()
         .toTypedArray()
@@ -111,19 +110,13 @@ fun convertJsonElement(row: JsonNode, type: RelDataType, failOnError: Boolean): 
 /**
  * Converts a json row into a sql row.
  */
-fun convertJsonRow(row: JsonNode, type: RelDataType, failOnError: Boolean): Array<out Any?> = when {
-    row is ObjectNode -> convertJsonElement(row, type, failOnError) as Array<*>
-    else ->
-        type.getField("VALUE", false, false)
-            ?.type
-            ?.let { arrayOf(convertJsonElement(row, it, failOnError)) }
-            ?: throw IllegalArgumentException("expected field 'VALUE' in : $type (encountered non object row : $row)")
-}
+fun convertJsonRow(row: ObjectNode, type: RelDataType, failOnError: Boolean): Array<out Any?> =
+    convertJsonElement(row, type, failOnError) as Array<*>
 
 /**
  * Deduce the SQL field type of a json field.
  */
-fun RelDataTypeFactory.deduceElementType(row: JsonNode, level: Int): RelDataType = when {
+fun RelDataTypeFactory.inferElementType(row: JsonNode, level: Int): RelDataType = when {
     row.isNull -> createUnknownType()
     row.isTextual -> nullable(createSqlType(SqlTypeName.VARCHAR))
     row.isBoolean -> nullable(createSqlType(SqlTypeName.BOOLEAN))
@@ -131,14 +124,14 @@ fun RelDataTypeFactory.deduceElementType(row: JsonNode, level: Int): RelDataType
     row is ObjectNode -> when {
         else -> row.fields()
             .asSequence()
-            .map { (k, v) -> /*k.toUpperCase()*/ k to deduceElementType(v, level + 1) }
+            .map { (k, v) -> /*k.toUpperCase()*/ k to inferElementType(v, level + 1) }
             .fold(builder()) { builder, (name, type) -> builder.add(name, type) }
             .safeNullable(true)
             .build()
     }
     row is ArrayNode -> nullable(
         createArrayType(
-            row.map { deduceElementType(it, level + 1) }.firstOrNull() ?: createUnknownType(),
+            row.map { inferElementType(it, level + 1) }.firstOrNull() ?: createUnknownType(),
             -1
         )
     )
@@ -148,7 +141,7 @@ fun RelDataTypeFactory.deduceElementType(row: JsonNode, level: Int): RelDataType
 /**
  * Deduce the SQL row type of a json row.
  */
-fun RelDataTypeFactory.deduceRowType(data: List<JsonNode>): RelDataType = when {
+fun RelDataTypeFactory.inferRowType(data: List<ObjectNode>): RelDataType = when {
     data.isEmpty() -> {
         builder().add("EMPTY_TABLE", createSqlType(SqlTypeName.BOOLEAN)).build()
     }
@@ -157,12 +150,8 @@ fun RelDataTypeFactory.deduceRowType(data: List<JsonNode>): RelDataType = when {
         .map { row ->
             builder()
                 .apply {
-                    add("_ROW_UUID", createSqlType(SqlTypeName.VARCHAR))
-                    when (row) {
-                        is ObjectNode -> for (field in deduceElementType(row, level = 1).fieldList) {
-                            add(field)
-                        }
-                        else -> add("VALUE", deduceElementType(row, level = 1))
+                    for (field in inferElementType(row, level = 1).fieldList) {
+                        add(field)
                     }
                 }
                 .build()

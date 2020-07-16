@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.apache.calcite.DataContext
 import org.apache.calcite.linq4j.Enumerable
 import org.apache.calcite.linq4j.Linq4j
@@ -28,7 +29,7 @@ class JsonTable(private val source: Source) : AbstractTable(), ScannableTable {
     override fun getRowType(typeFactory: RelDataTypeFactory): RelDataType {
         if (type == null) {
             type = with(typeFactory) {
-                val inferred = deduceRowType(source.fetch().asSequence().take(50).toList())
+                val inferred = inferRowType(source.fetchStandardizedRows().take(50).toList())
                 replaceNullTypes(inferred, replacement = createSqlType(SqlTypeName.VARCHAR))
             }
         }
@@ -38,8 +39,8 @@ class JsonTable(private val source: Source) : AbstractTable(), ScannableTable {
 
     override fun scan(root: DataContext): Enumerable<Array<out Any?>> {
         val type = type ?: throw IllegalStateException("type should be known...")
-        val data = source.fetch()
-            .asSequence()
+        val data = source
+            .fetchStandardizedRows()
             .map { convertJsonRow(it, type, failOnError = false) }
             .toList()
 
@@ -86,7 +87,7 @@ class CachedSource(private val wrapped: Source) : Source {
 class FileSource(private val file: File) : Source {
     override fun fetch(): Iterator<JsonNode> {
         val parsed = json.readTree(file)
-        require(parsed is ArrayNode) { "data read from '$file' is not an array..." }
+        require(parsed is ArrayNode) { "data read from '$file' should be an array..." }
         return parsed.iterator()
     }
 }
@@ -107,7 +108,7 @@ class StdinSource(private val streaming: Boolean, private val limit: Int?) : Sou
             } else {
                 val data = System.`in`.readBytes()
                 val parsed = json.readTree(data)
-                require(parsed is ArrayNode) { "data read from stdin is not an array: ${String(data).take(100)}" }
+                require(parsed is ArrayNode) { "data read from stdin should be an array: ${String(data).take(100)}" }
                 parsed.let { if (limit != null) json.createArrayNode().addAll(parsed.take(limit)) else parsed }
             }
 
@@ -116,3 +117,17 @@ class StdinSource(private val streaming: Boolean, private val limit: Int?) : Sou
 }
 
 fun Source.cached() = CachedSource(this)
+
+private fun Source.fetchStandardizedRows(): Sequence<ObjectNode> = fetch().asSequence().map { row ->
+    val standardized = when (row) {
+        is ObjectNode -> row
+        else -> json.createObjectNode().set("value", row)
+    }
+
+    // Generate a fake field if the row is empty as this makes Calcite buggy
+    if (standardized.isEmpty) {
+        standardized.put("_EMPTY_ROW", "true")
+    }
+
+    standardized
+}

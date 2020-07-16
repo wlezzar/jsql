@@ -4,7 +4,7 @@ Execute SQL on any json data.
 
 ```bash
 echo '[{"id": "1", "content": {"price": 2.3}}, {"id": "2", "content": {"price": 2.3}}]' | \
-    jsql query 'SELECT id, data.content.price FROM data' 
+    jsql query 'SELECT id, data.content.price FROM main' 
 
 ┌────┬───────┐
 │ id │ price │
@@ -68,7 +68,7 @@ jsql --help
 
 `jsql` can SQL query any json data piped into it. It handles nested data and both streaming and non streaming input.
 
-Input data is available in `jsql` under the `data` table name. Thus, you can use: `SELECT * FROM data` to access it.
+Input data is available in `jsql` under the `main` table name. Thus, you can use: `SELECT * FROM main` to access it.
 
 To inspect how jsql is parsing the input data, use the `describe` command to print the inferred schema of the data:
 
@@ -90,7 +90,7 @@ echo '[{"id": 1}, {"id": 2}]' | jsql describe
 Then, to query the data:
 
 ```bash
-echo '[{"id": 1}, {"id": 2}]' | jsql query 'SELECT id FROM data'
+echo '[{"id": 1}, {"id": 2}]' | jsql query 'SELECT id FROM main'
 
 ┌─────┐
 │ id  │
@@ -108,7 +108,7 @@ curl -s  https://stream.wikimedia.org/v2/stream/recentchange \
     | grep data \
     | grep '/mediawiki/recentchange/1.0.0' \
     | sed 's/^data: //g' \
-    | jsql --streaming --take 5 query "SELECT id, title, server_name FROM data WHERE server_name = 'www.wikidata.org'"
+    | jsql --streaming --take 5 query "SELECT id, title, server_name FROM main WHERE server_name = 'www.wikidata.org'"
 
 ┌───────────────┬──────────────────────────────────────────────────┬───────────────────────┐
 │ id            │ title                                            │ server_name           │
@@ -131,7 +131,7 @@ Contributors of the most recent commits in the kubernetes repository:
 
 ```bash
 http https://api.github.com/repos/kubernetes/kubernetes/commits \
-    | jsql query 'SELECT data.author.login, COUNT(*) as total FROM data GROUP BY data.author.login'
+    | jsql query 'SELECT main.author.login, COUNT(*) as total FROM main GROUP BY main.author.login'
 
 ┌───────────────┬───────┐
 │ login         │ total │
@@ -152,7 +152,7 @@ Use [zoe](https://github.com/adevinta/zoe) to fetch the lags for a kafka consume
 
 ```bash
 zoe --silent -o json groups offsets my_group \
-    | jsql query 'SELECT topic, SUM("lag") as total_lag FROM data GROUP BY topic'
+    | jsql query 'SELECT topic, SUM("lag") as total_lag FROM main GROUP BY topic'
 
 ┌─────────┬───────────┐
 │ topic   │ total_lag │
@@ -167,8 +167,8 @@ zoe --silent -o json groups offsets my_group \
 ### When accessing nested fields, I have "Table 'xxx' not found"!
 
 Apache Calcite parser is a bit peaky. When accessing nested data using the `.` operator, you need to give the full path to your field including the table name. So:
-- Instead of: `SELECT author.login FROM data`
-- Use: `SELECT data.author.login FROM data`
+- Instead of: `SELECT author.login FROM main`
+- Use: `SELECT main.author.login FROM main`
 
 ### My query seems valid, but I get an error "Encountered "xxx" ... Was expecting one of ..."!
 
@@ -176,8 +176,8 @@ This is an Apache Calcite parse error. First check you didn't do any syntax erro
 
 One common issue that causes this problem is when you have a field that has the same name as a SQL keyword. In this case, you need to quote your field name with `"`. So:
 
-- Instead of: `SELECT data.commit.author FROM data`
-- Use: `SELECT data."commit".author FROM data`
+- Instead of: `SELECT main.commit.author FROM main`
+- Use: `SELECT main."commit".author FROM main`
 
 Because `commit` is a Calcite SQL keyword, and clashes with the field named `commit`.
 
