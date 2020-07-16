@@ -98,18 +98,17 @@ class FileSource(private val file: File) : Source {
 class StdinSource(private val streaming: Boolean, private val limit: Int?) : Source {
 
     override fun fetch(): Iterator<JsonNode> {
-        val parsed: ArrayNode =
+        val parsed: Sequence<JsonNode> =
             if (streaming) {
                 System.`in`
                     .bufferedReader(Charsets.UTF_8)
                     .lineSequence()
                     .take(limit ?: 100)
-                    .fold(initial = json.createArrayNode()) { acc, line -> acc.add(json.readTree(line)) }
+                    .map(json::readTree)
             } else {
-                val data = System.`in`.readBytes()
-                val parsed = json.readTree(data)
-                require(parsed is ArrayNode) { "data read from stdin should be an array: ${String(data).take(100)}" }
-                parsed.let { if (limit != null) json.createArrayNode().addAll(parsed.take(limit)) else parsed }
+                val parsed = json.readTree(System.`in`.readBytes())
+                val sequence = if (parsed !is ArrayNode) sequenceOf(parsed) else parsed.asSequence()
+                sequence.let { if (limit != null) it.take(limit) else it }
             }
 
         return parsed.iterator()
