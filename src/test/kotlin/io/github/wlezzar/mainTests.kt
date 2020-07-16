@@ -27,12 +27,12 @@ class MainTest : ExpectSpec({
 
         expect("counts are correct") {
             sql(table) {
-                executeQuery("SELECT COUNT(*) AS total FROM data")
+                executeQuery("SELECT COUNT(*) AS total FROM main")
             } shouldBe listOf("""{"total": 5.0}""".toJsonNode())
         }
 
         expect("selects are correct") {
-            sql(table) { executeQuery("SELECT name FROM data") }
+            sql(table) { executeQuery("SELECT name FROM main") }
                 .map { it["name"]?.asText() }
                 .toSet().shouldBe(
                     setOf(
@@ -46,7 +46,7 @@ class MainTest : ExpectSpec({
         }
 
         expect("aggregations are correct") {
-            sql(table) { executeQuery("SELECT job, COUNT(*) AS total FROM data GROUP BY job") }
+            sql(table) { executeQuery("SELECT job, COUNT(*) AS total FROM main GROUP BY job") }
                 .toSet()
                 .shouldBe(
                     setOf(
